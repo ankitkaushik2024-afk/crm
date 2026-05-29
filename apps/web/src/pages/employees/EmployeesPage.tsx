@@ -1,0 +1,292 @@
+import { useEffect, useState } from 'react';
+import { Plus, Search, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api, getApiErrorMessage } from '@/lib/api';
+import { useAppSelector } from '@/store/hooks';
+import { PERMISSIONS } from '@crm/shared';
+
+interface Employee {
+  id: string;
+  employeeCode: string;
+  employmentStatus: string;
+  joiningDate: string;
+  user: { firstName: string; lastName: string; email: string };
+  department?: { name: string } | null;
+  designation?: { title: string } | null;
+}
+
+interface Department {
+  id: string;
+  name: string;
+}
+
+interface Designation {
+  id: string;
+  title: string;
+}
+
+export function EmployeesPage() {
+  const user = useAppSelector((s) => s.auth.user);
+  const canWrite = user?.permissions.includes(PERMISSIONS.EMPLOYEES_WRITE);
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    employeeCode: '',
+    departmentId: '',
+    designationId: '',
+    joiningDate: new Date().toISOString().slice(0, 10),
+    phone: '',
+  });
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [empRes, deptRes, desigRes] = await Promise.all([
+        api.get('/employees', { params: { search: search || undefined, limit: 50 } }),
+        api.get('/employees/departments'),
+        api.get('/employees/designations'),
+      ]);
+      setEmployees(empRes.data.data ?? []);
+      setDepartments(deptRes.data.data ?? []);
+      setDesignations(desigRes.data.data ?? []);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    load();
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.post('/employees', {
+        ...form,
+        departmentId: form.departmentId || undefined,
+        designationId: form.designationId || undefined,
+        employeeCode: form.employeeCode || undefined,
+      });
+      toast.success('Employee created');
+      setShowForm(false);
+      setForm({
+        email: '',
+        firstName: '',
+        lastName: '',
+        employeeCode: '',
+        departmentId: '',
+        designationId: '',
+        joiningDate: new Date().toISOString().slice(0, 10),
+        phone: '',
+      });
+      load();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Users className="h-7 w-7 text-primary" />
+            Employees
+          </h1>
+          <p className="text-muted-foreground">Manage employee profiles and org structure</p>
+        </div>
+        {canWrite && (
+          <Button onClick={() => setShowForm(!showForm)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Employee
+          </Button>
+        )}
+      </div>
+
+      {showForm && canWrite && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">New Employee</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>First name</Label>
+                <Input
+                  required
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Last name</Label>
+                <Input
+                  required
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Employee code (optional)</Label>
+                <Input
+                  value={form.employeeCode}
+                  onChange={(e) => setForm({ ...form, employeeCode: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.departmentId}
+                  onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+                >
+                  <option value="">—</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Designation</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.designationId}
+                  onChange={(e) => setForm({ ...form, designationId: e.target.value })}
+                >
+                  <option value="">—</option>
+                  {designations.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Joining date</Label>
+                <Input
+                  type="date"
+                  required
+                  value={form.joiningDate}
+                  onChange={(e) => setForm({ ...form, joiningDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2 flex gap-2">
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Creating...' : 'Create Employee'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <form onSubmit={handleSearch} className="flex gap-2 max-w-md">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search by name, email, code..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Button type="submit" variant="secondary">
+          Search
+        </Button>
+      </form>
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : employees.length === 0 ? (
+            <p className="p-6 text-muted-foreground text-sm">No employees found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Code</th>
+                    <th className="text-left p-3 font-medium">Name</th>
+                    <th className="text-left p-3 font-medium">Department</th>
+                    <th className="text-left p-3 font-medium">Role</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((emp) => (
+                    <tr key={emp.id} className="border-b hover:bg-muted/30">
+                      <td className="p-3 font-mono text-xs">{emp.employeeCode}</td>
+                      <td className="p-3">
+                        <p className="font-medium">
+                          {emp.user.firstName} {emp.user.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{emp.user.email}</p>
+                      </td>
+                      <td className="p-3">{emp.department?.name ?? '—'}</td>
+                      <td className="p-3">{emp.designation?.title ?? '—'}</td>
+                      <td className="p-3">
+                        <Badge variant="outline">{emp.employmentStatus}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

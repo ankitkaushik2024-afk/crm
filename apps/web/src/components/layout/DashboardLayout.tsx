@@ -1,0 +1,63 @@
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
+import { Navbar } from './Navbar';
+import { cn } from '@/lib/utils';
+import { getNavigationForRole } from '@/config/navigation';
+import { useAppSelector } from '@/store/hooks';
+import { NavLink } from 'react-router-dom';
+import type { RoleName } from '@crm/shared';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export function DashboardLayout() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const user = useAppSelector((s) => s.auth.user);
+  const role = (user?.role || 'EMPLOYEE') as RoleName;
+  const navItems = getNavigationForRole(role);
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-64 bg-sidebar border-r p-4">
+            <div className="flex justify-between items-center mb-6">
+              <span className="font-semibold">Nexus CRM</span>
+              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <nav className="space-y-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm',
+                      isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                    )
+                  }
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </NavLink>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col min-w-0">
+        <Navbar onMenuClick={() => setMobileOpen(true)} />
+        <main className="flex-1 overflow-auto p-4 lg:p-6 animate-fade-in">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}

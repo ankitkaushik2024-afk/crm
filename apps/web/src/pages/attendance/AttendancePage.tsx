@@ -1,0 +1,204 @@
+import { useEffect, useState } from 'react';
+import { Clock, LogIn, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api, getApiErrorMessage } from '@/lib/api';
+import { formatTime } from '@/lib/date';
+
+interface AttendanceRecord {
+  id: string;
+  date: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  status: string;
+  workHours: number | null;
+  isLate: boolean;
+  employee?: {
+    employeeCode: string;
+    user: { firstName: string; lastName: string };
+  };
+}
+
+interface TodayRecord {
+  id: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  status: string;
+  workHours: number | null;
+  isLate: boolean;
+}
+
+export function AttendancePage() {
+  const [today, setToday] = useState<TodayRecord | null>(null);
+  const [history, setHistory] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [todayRes, listRes] = await Promise.all([
+        api.get('/attendance/today'),
+        api.get('/attendance', { params: { limit: 20 } }),
+      ]);
+      setToday(todayRes.data.data ?? null);
+      setHistory(listRes.data.data ?? []);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const checkIn = async () => {
+    setActionLoading(true);
+    try {
+      await api.post('/attendance/check-in', {});
+      toast.success('Checked in successfully');
+      load();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const checkOut = async () => {
+    setActionLoading(true);
+    try {
+      await api.post('/attendance/check-out', {});
+      toast.success('Checked out successfully');
+      load();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const canCheckIn = !today?.checkIn;
+  const canCheckOut = today?.checkIn && !today?.checkOut;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Clock className="h-7 w-7 text-primary" />
+          Attendance
+        </h1>
+        <p className="text-muted-foreground">Check in, check out, and view your attendance history</p>
+      </div>
+
+      {loading ? (
+        <Skeleton className="h-40 w-full" />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Today</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {today ? (
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge className="mt-1">{today.status}</Badge>
+                  {today.isLate && (
+                    <Badge variant="warning" className="ml-2 mt-1">
+                      Late
+                    </Badge>
+                  )}
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Check in</p>
+                  <p className="font-medium">{today.checkIn ? formatTime(today.checkIn) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Check out</p>
+                  <p className="font-medium">{today.checkOut ? formatTime(today.checkOut) : '—'}</p>
+                </div>
+                {today.workHours != null && (
+                  <div>
+                    <p className="text-muted-foreground">Work hours</p>
+                    <p className="font-medium">{today.workHours}h</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No attendance record for today yet.</p>
+            )}
+
+            <div className="flex gap-2">
+              <Button onClick={checkIn} disabled={!canCheckIn || actionLoading}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Check In
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={checkOut}
+                disabled={!canCheckOut || actionLoading}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Check Out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent History</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6">
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : history.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">No records yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Date</th>
+                    <th className="text-left p-3 font-medium">Employee</th>
+                    <th className="text-left p-3 font-medium">In</th>
+                    <th className="text-left p-3 font-medium">Out</th>
+                    <th className="text-left p-3 font-medium">Hours</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((r) => (
+                    <tr key={r.id} className="border-b">
+                      <td className="p-3">{new Date(r.date).toLocaleDateString()}</td>
+                      <td className="p-3">
+                        {r.employee
+                          ? `${r.employee.user.firstName} ${r.employee.user.lastName}`
+                          : '—'}
+                      </td>
+                      <td className="p-3">{r.checkIn ? formatTime(r.checkIn) : '—'}</td>
+                      <td className="p-3">{r.checkOut ? formatTime(r.checkOut) : '—'}</td>
+                      <td className="p-3">{r.workHours ?? '—'}</td>
+                      <td className="p-3">
+                        <Badge variant="outline">{r.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

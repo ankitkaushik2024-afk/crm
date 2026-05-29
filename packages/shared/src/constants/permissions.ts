@@ -1,0 +1,91 @@
+export const PERMISSIONS = {
+  // Users & RBAC
+  USERS_READ: 'users:read',
+  USERS_WRITE: 'users:write',
+  ROLES_MANAGE: 'roles:manage',
+
+  // Company & SaaS
+  COMPANY_SETTINGS: 'company:settings',
+  SUBSCRIPTION_MANAGE: 'subscription:manage',
+  ANALYTICS_VIEW: 'analytics:view',
+
+  // HR
+  EMPLOYEES_READ: 'employees:read',
+  EMPLOYEES_WRITE: 'employees:write',
+  DEPARTMENTS_MANAGE: 'departments:manage',
+  RECRUITMENT_MANAGE: 'recruitment:manage',
+
+  // Attendance & Leave
+  ATTENDANCE_READ: 'attendance:read',
+  ATTENDANCE_WRITE: 'attendance:write',
+  ATTENDANCE_APPROVE: 'attendance:approve',
+  LEAVES_READ: 'leaves:read',
+  LEAVES_WRITE: 'leaves:write',
+  LEAVES_APPROVE: 'leaves:approve',
+
+  // Payroll
+  PAYROLL_READ: 'payroll:read',
+  PAYROLL_WRITE: 'payroll:write',
+  PAYROLL_PROCESS: 'payroll:process',
+
+  // Projects & Tasks
+  PROJECTS_READ: 'projects:read',
+  PROJECTS_WRITE: 'projects:write',
+  TASKS_READ: 'tasks:read',
+  TASKS_WRITE: 'tasks:write',
+
+  // Reports & Chat
+  REPORTS_EXPORT: 'reports:export',
+  CHAT_USE: 'chat:use',
+  SETTINGS_MANAGE: 'settings:manage',
+} as const;
+
+export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+/** Default permissions per role */
+export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
+  SUPER_ADMIN: Object.values(PERMISSIONS),
+  HR: [
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.EMPLOYEES_READ,
+    PERMISSIONS.EMPLOYEES_WRITE,
+    PERMISSIONS.DEPARTMENTS_MANAGE,
+    PERMISSIONS.RECRUITMENT_MANAGE,
+    PERMISSIONS.ATTENDANCE_READ,
+    PERMISSIONS.ATTENDANCE_WRITE,
+    PERMISSIONS.ATTENDANCE_APPROVE,
+    PERMISSIONS.LEAVES_READ,
+    PERMISSIONS.LEAVES_WRITE,
+    PERMISSIONS.LEAVES_APPROVE,
+    PERMISSIONS.PAYROLL_READ,
+    PERMISSIONS.PAYROLL_WRITE,
+    PERMISSIONS.PAYROLL_PROCESS,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.REPORTS_EXPORT,
+    PERMISSIONS.CHAT_USE,
+    PERMISSIONS.SETTINGS_MANAGE,
+  ],
+  MANAGER: [
+    PERMISSIONS.EMPLOYEES_READ,
+    PERMISSIONS.ATTENDANCE_READ,
+    PERMISSIONS.ATTENDANCE_APPROVE,
+    PERMISSIONS.LEAVES_READ,
+    PERMISSIONS.LEAVES_APPROVE,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.PROJECTS_WRITE,
+    PERMISSIONS.TASKS_READ,
+    PERMISSIONS.TASKS_WRITE,
+    PERMISSIONS.REPORTS_EXPORT,
+    PERMISSIONS.CHAT_USE,
+  ],
+  EMPLOYEE: [
+    PERMISSIONS.ATTENDANCE_READ,
+    PERMISSIONS.ATTENDANCE_WRITE,
+    PERMISSIONS.LEAVES_READ,
+    PERMISSIONS.LEAVES_WRITE,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.TASKS_READ,
+    PERMISSIONS.TASKS_WRITE,
+    PERMISSIONS.CHAT_USE,
+  ],
+};
