@@ -69,7 +69,7 @@ export class AuditService {
     const map = await auditRepository.findLatestByEntities(companyId, entityType, entityIds);
     const result = new Map<string, ReturnType<typeof mapAuditLog>>();
     for (const [id, log] of map.entries()) {
-      result.set(id, mapAuditLog(log));
+      if (log) result.set(id, mapAuditLog(log));
     }
     return result;
   }

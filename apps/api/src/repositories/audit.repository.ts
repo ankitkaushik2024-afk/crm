@@ -50,8 +50,6 @@ export class AuditRepository {
   }
 
   async findLatestByEntities(companyId: string, entityType: string, entityIds: string[]) {
-    if (!entityIds.length) return new Map<string, Awaited<ReturnType<typeof prisma.auditLog.findFirst>>>();
-
     const logs = await prisma.auditLog.findMany({
       where: {
         companyId,

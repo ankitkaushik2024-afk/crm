@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { settingsRepository } from '../repositories/settings.repository';
 
 export class SettingsService {
@@ -26,7 +27,7 @@ export class SettingsService {
         emailNotifications: input.emailNotifications,
       }),
       ...(input.theme !== undefined && { theme: input.theme }),
-      ...(input.payrollSettings !== undefined && { payrollSettings: input.payrollSettings }),
+      ...(input.payrollSettings !== undefined && { payrollSettings: input.payrollSettings as Prisma.InputJsonValue }),
     });
   }
 }
